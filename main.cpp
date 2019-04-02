@@ -12,6 +12,7 @@ void usage() {
             "usage: \n"
             "   getpixel info -- show width height bpp\n"
             "   getpixel x y\n"
+            "   getpixel left top right bottom --dump rect colors\n"
             "   index starts 1\n"
             "   eg: getpixel 1 1\n"
     );
@@ -20,27 +21,35 @@ void usage() {
 int main(int argc, char**argv)
 {
     int x = 0, y = 0;
+    int t,r,b,l;
     const char* fbpath = "/dev/graphics/fb0";
     unsigned char * mapbase;
     int fb;
     int bpp = -1;
-    int i;
-    int m = 0;//xy mode
-    if (argc != 3)
+    int i,j;
+    int m;//xy mode
+    if (argc == 3)
     {
-        if (argc != 2)
-        {
-            usage(); 
-            exit(1);
-        }
+        m = 0;
+    }
+    else if (argc == 5)
+    {
+        m = 2;
+    }
+    else if (argc == 2)
+    {
+        m = 1;
         if (strcmp(argv[1],"info") != 0)
         {
             usage(); 
             exit(1);
         }
-        m = 1;
     }
-
+    else
+    {
+        usage(); 
+        exit(1);
+    }
     fb = open(fbpath, O_RDONLY);
 
     if (fb <= 0) 
@@ -62,7 +71,8 @@ int main(int argc, char**argv)
         return 1;
     }
 
-    switch (vinfo.bits_per_pixel) {
+    switch (vinfo.bits_per_pixel) 
+    {
         case 16:
             bpp = 2;
             break;
@@ -93,20 +103,44 @@ int main(int argc, char**argv)
         return 1;
     }
     system("/system/bin/screencap /dev/awmem");
-
-    x = atoi(argv[1])-1;
-    y = atoi(argv[2])-1;
-
-    if (x < 0 || y < 0 || x > vinfo.xres || y > vinfo.yres)
+    if (m == 0)
     {
-        printf("max info:%d,%d,%d",vinfo.xres,vinfo.yres,bpp);
-        exit(1);
+        x = atoi(argv[1])-1;
+        y = atoi(argv[2])-1;
+        if (x < 0 || y < 0 || x > vinfo.xres || y > vinfo.yres)
+        {
+            printf("max info:%d,%d,%d",vinfo.xres,vinfo.yres,bpp);
+            exit(1);
+        }
+
+        for(i=0;i<3;i++)
+        {
+            printf("%02x", *(mapbase+12+(x+y*vinfo.xres)*bpp+i));
+        }   
     }
-
-    for(i=0;i<3;i++)
+    else if (m == 2)
     {
-        printf("%02x", *(mapbase+12+(x+y*vinfo.xres)*bpp+i));
-    }   
+        l = atoi(argv[1])-1;
+        t = atoi(argv[2])-1;
+        r = atoi(argv[3])-1;
+        b = atoi(argv[4])-1;
+        for(i=l;i<r;i++)
+        {
+            for (j = t; j < b; ++j)
+            {
+                printf("%02x", *(mapbase+12+(i+j*vinfo.xres)*bpp));
+                printf("%02x", *(mapbase+12+(i+j*vinfo.xres)*bpp+1));
+                printf("%02x", *(mapbase+12+(i+j*vinfo.xres)*bpp+2));
+                if (!(i==r-1 && j == b-1))
+                {
+                    printf(",");
+                }
+            }
+        } 
+    }
+    
+
+        
 
     munmap((void *)mapbase, mapsize);
     close(fb);
