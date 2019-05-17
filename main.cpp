@@ -13,6 +13,7 @@ void usage() {
             "   getpixel info -- show width height bpp\n"
             "   getpixel x y\n"
             "   getpixel left top right bottom --dump rect colors\n"
+            "   getpixel left top right bottom colors --dump rect colors\n"
             "   index starts 1\n"
             "   eg: getpixel 1 1\n"
     );
@@ -28,6 +29,9 @@ int main(int argc, char**argv)
     int bpp = -1;
     int i,j;
     int m;//xy mode
+    char seps[]   = ",";
+    char *token;
+
     if (argc == 3)
     {
         m = 0;
@@ -35,6 +39,10 @@ int main(int argc, char**argv)
     else if (argc == 5)
     {
         m = 2;
+    }
+    else if (argc == 6)
+    {
+        m = 3;
     }
     else if (argc == 2)
     {
@@ -138,9 +146,41 @@ int main(int argc, char**argv)
             }
         } 
     }
-    
-
-        
+    else if (m == 3)
+    {
+        int count_color = 0;
+        token = strtok( argv[5], "," );
+        unsigned int color_hex;
+        l = atoi(argv[1])-1;
+        t = atoi(argv[2])-1;
+        r = atoi(argv[3])-1;
+        b = atoi(argv[4])-1;
+        int vi = 0;
+        while( token != NULL )
+        {
+        	if(vi)
+            {
+            	printf(",");
+            }
+            count_color = 0;
+            sscanf(token, "%x", &color_hex);
+			for(i=l;i<r;i++)
+	        {
+	            for (j = t; j < b; ++j)
+	            {
+	                if(((color_hex >> 16) & 0xff) == *(mapbase+12+(i+j*vinfo.xres)*bpp) &&
+	                    ((color_hex >> 8) & 0xff) == *(mapbase+12+(i+j*vinfo.xres)*bpp+1) &&
+	                    ((color_hex) & 0xff) == *(mapbase+12+(i+j*vinfo.xres)*bpp + 2))
+	                {
+	                    count_color++;
+	                }
+	            }
+	        }  
+	        printf("%d", count_color);
+	        token = strtok( NULL, "," );
+	        vi++;
+        }
+    }
 
     munmap((void *)mapbase, mapsize);
     close(fb);
